@@ -1,29 +1,33 @@
-FROM alpine:latest
+FROM alpine:3.12
 
-MAINTAINER PS <psellars@gmail.com>
+LABEL maintainer="vadim.turkov@gmail.com"
 
 RUN apk add --no-cache \
-    curl \
-    git \
-    openssh-client \
-    rsync
+  curl \
+  git \
+  openssh-client \
+  rsync
 
 ENV VERSION 0.64.0
-RUN mkdir -p /usr/local/src \
-    && cd /usr/local/src \
+ENV HUGO_FILE hugo_${VERSION}_Linux-64bit.tar.gz
+ENV HUGO_URL https://github.com/gohugoio/hugo/releases/download/v${VERSION}/${HUGO_FILE}
+ENV CHECKSUM_URL https://github.com/gohugoio/hugo/releases/download/v${VERSION}/hugo_${VERSION}_checksums.txt
 
-    && curl -L \
-      https://github.com/gohugoio/hugo/releases/download/v${VERSION}/hugo_${VERSION}_linux-64bit.tar.gz \
-      | tar -xz \
-    && mv hugo /usr/local/bin/hugo \
+WORKDIR /usr/local/src
 
-    && curl -L \
-      https://bin.equinox.io/c/dhgbqpS8Bvy/minify-stable-linux-amd64.tgz | tar -xz \
-    && mv minify /usr/local/bin/ \
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
-    && addgroup -Sg 1000 hugo \
-    && adduser -SG hugo -u 1000 -h /src hugo
+RUN curl -L "${HUGO_URL}" -o "${HUGO_FILE}" \ 
+  && curl -L "${CHECKSUM_URL}" | grep "${HUGO_FILE}" | sha256sum -c \
+  && tar -xzf "${HUGO_FILE}" \
+  && mv hugo /usr/local/bin/hugo \
+  && rm -r "${PWD:?}"/* \
+  && addgroup -Sg 1000 hugo \
+  && adduser -SG hugo -u 1000 -h /src hugo
 
 WORKDIR /src
 
 EXPOSE 1313
+
+HEALTHCHECK --interval=5m --timeout=30s\ 
+  CMD curl -f http://localhost:1313/ || exit 1
