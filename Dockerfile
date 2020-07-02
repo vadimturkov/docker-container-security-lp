@@ -27,5 +27,7 @@ WORKDIR /src
 
 EXPOSE 1313
 
+USER hugo
+
 HEALTHCHECK --interval=10s --timeout=10s --start-period=15s \ 
   CMD hugo env || exit 1
