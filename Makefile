@@ -1,21 +1,41 @@
-default: build
+default: build lint
 
 build:
 	@echo "Building Hugo Builder container..."
 	@docker build -t vadimturkov/hugo-builder .
 	@echo "Hugo Builder container built!"
-	docker images vadimturkov/hugo-builder
-
-build-website:
-	@echo "Building OrgDocs website..."
-	@docker run --rm -it -v ${PWD}/orgdocs:/src -u hugo vadimturkov/hugo-builder hugo
-
-serve-website:
-	@echo "Serving OrgDocs website..."
-	@docker run --rm -it -v ${PWD}/orgdocs:/src -u hugo -p 1313:1313 vadimturkov/hugo-builder hugo server -w --bind=0.0.0.0
+	@docker images vadimturkov/hugo-builder
 
 lint:
 	@echo "Linting Dockerfile..."
-	@docker run --rm -i hadolint/hadolint < Dockerfile
+	@docker run --rm -i hadolint/hadolint:v1.18.0 hadolint --ignore DL3018 - < Dockerfile
+	@echo "Linting completed!"
 
-.PHONY: build build-website serve-website lint
+build-site:
+	@echo "Building the OrgDocs site..."
+	@docker run --rm -it --mount type=bind,src=${PWD}/orgdocs,dst=/src -u hugo vadimturkov/hugo-builder hugo
+	@echo "OrgDocs website built!"
+
+start-server:
+	@echo "Serving the OrgDocs site..."
+	@docker run --rm -itd --name hugo_server --mount type=bind,src=${PWD}/orgdocs,dst=/src \
+		-u hugo -p 1313:1313 vadimturkov/hugo-builder hugo server -w --bind=0.0.0.0
+	@echo "OrgDocs site being served!"
+	@docker ps -f name=hugo_server
+
+stop-server:
+	@echo "Stopping the OrgDocs site..."
+	@docker stop hugo_server
+	@echo "OrgDocs site stopped!"
+
+health-check:
+	@echo "Checking the health of the Hugo server..."
+	@docker inspect -f '{{json .State.Health}}' hugo_server
+
+inspect-labels:
+	@echo "Inspecting container labels..."
+	@echo "Maintainer: \c"
+	@docker inspect -f '{{index .Config.Labels "maintainer"}}' hugo_server
+	@echo "Labels inspected!"
+
+.PHONY: build lint build-site start-server stop-server health-check inspect-labels
