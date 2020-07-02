@@ -1,0 +1,59 @@
+---
+profile: 
+  name: "Extra Rules"
+  description: "Set of extra rules for Dockerfiles"
+
+line_rules:
+
+  FROM:
+    paramSyntaxRegex: /^[\w./\-:]+(:[\w.]+)?(-[\w]+)?$/
+    rules:
+      -
+        label: "is_latest_tag"
+        regex: /latest/
+        level: "error"
+        message: "Base image uses 'latest' tag"
+        description: "Using the 'latest' tag may cause unpredictable builds. It is recommended that a specific tag is used in the FROM line or *-released which is the latest supported release."
+        reference_url: "https://docs.docker.com/engine/reference/builder/#from"
+
+      -
+        label: "no_tag"
+        regex: /:/
+        inverse_rule: true
+        level: "error"
+        message: "No tag is used"
+        description: "No tag is used. It is recommended that a specific tag is used in the FROM line or *-released which is the latest supported release."
+        reference_url: "https://docs.docker.com/engine/reference/builder/#from"
+
+  LABEL:
+    paramSyntaxRegex: /.+/
+    defined_namevals:
+      maintainer:
+        level: "warn"
+        required: true
+  
+  HEALTHCHECK:
+    paramSyntaxRegex: /.+/
+    rules:
+      -
+        label: "no_curl"
+        regex: /curl/
+        level: "warn"
+        message: "curl used in HEALTHCHECK"
+        description: "It is recommended not to use curl in HEALTHCHECK instruction"
+        reference_url: "https://blog.sixeyed.com/docker-healthchecks-why-not-to-use-curl-or-iwr/"
+
+required_instructions: 
+  -
+    instruction: "HEALTHCHECK"
+    count: 1
+    level: "warn"
+    message: "No 'HEALTHCHECK' instruction"
+    reference_url: "https://docs.docker.com/engine/reference/builder/#healthcheck"
+      
+  -
+    instruction: "LABEL"
+    count: 1
+    level: "warn"
+    message: "No 'LABEL' instruction"
+    reference_url: "https://docs.docker.com/engine/reference/builder/#label"

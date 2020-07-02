@@ -1,4 +1,4 @@
-default: build lint
+default: build hadolint dockerfile-lint
 
 build:
 	@echo "Building Hugo Builder container..."
@@ -6,9 +6,15 @@ build:
 	@echo "Hugo Builder container built!"
 	@docker images vadimturkov/hugo-builder
 
-lint:
-	@echo "Linting Dockerfile..."
+hadolint:
+	@echo "Linting Dockerfile by hadolint..."
 	@docker run --rm -i hadolint/hadolint:v1.18.0 hadolint --ignore DL3018 - < Dockerfile
+	@echo "Linting completed!"
+
+dockerfile-lint:
+	@echo "Linting Dockerfile by dockerfile_lint..."
+	@docker run -it --rm --mount type=bind,src=${PWD},dst=/root projectatomic/dockerfile-lint \
+		dockerfile_lint -r policies/all_rules.yml
 	@echo "Linting completed!"
 
 build-site:
@@ -38,4 +44,4 @@ inspect-labels:
 	@docker inspect -f '{{index .Config.Labels "maintainer"}}' hugo_server
 	@echo "Labels inspected!"
 
-.PHONY: build lint build-site start-server stop-server health-check inspect-labels
+.PHONY: build hadolint dockerfile-lint build-site start-server stop-server health-check inspect-labels
