@@ -44,4 +44,29 @@ inspect-labels:
 	@docker inspect -f '{{index .Config.Labels "maintainer"}}' hugo_server
 	@echo "Labels inspected!"
 
-.PHONY: build hadolint dockerfile-lint build-site start-server stop-server health-check inspect-labels
+clair: clair-start-server clair-scanner clair-stop-server
+
+clair-start-server:
+	@echo "Starting Clair server..."
+	@docker run --rm -d --name clair-db arminc/clair-db:latest
+	@sleep 5
+	@docker run --rm -p 6060:6060 --link clair-db:postgres -d --name clair arminc/clair-local-scan:v2.0.6
+
+clair-scanner:
+	@echo "Starting Clair scanner..."
+	@curl -OL https://github.com/arminc/clair-scanner/releases/download/v12/clair-scanner_darwin_amd64
+	@mv clair-scanner_darwin_amd64 clair-scanner
+	@chmod +x clair-scanner
+	@./clair-scanner -w clair_config/config.yaml --ip 192.168.100.5 vadimturkov/hugo-builder
+	@rm clair-scanner
+
+clair-stop-server:
+	@echo "Stopping Clair server..."
+	@docker stop clair-db
+	@docker stop clair
+
+.PHONY: 
+	build hadolint dockerfile-lint 
+	build-site start-server stop-server 
+	health-check inspect-labels 
+	clair clair-start-server clair-scanner clair-stop-server
