@@ -1,7 +1,0 @@
----
-profile: 
-  name: "All Rules"
-  description: "Combine extra and security rules for Dockerfiles"
-  includes:
-    - security_rules.yml
-    - extra_rules.yml

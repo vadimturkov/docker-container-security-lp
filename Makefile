@@ -1,4 +1,4 @@
-default: build hadolint dockerfile-lint
+default: build lint check-policies clair-scan
 
 build:
 	@echo "Building Hugo Builder container..."
@@ -6,15 +6,15 @@ build:
 	@echo "Hugo Builder container built!"
 	@docker images vadimturkov/hugo-builder
 
-hadolint:
-	@echo "Linting Dockerfile by hadolint..."
+lint:
+	@echo "Linting the Hugo Builder container..."
 	@docker run --rm -i hadolint/hadolint:v1.18.0 hadolint --ignore DL3018 - < Dockerfile
 	@echo "Linting completed!"
 
-dockerfile-lint:
-	@echo "Linting Dockerfile by dockerfile_lint..."
+check-policies:
+	@echo "Checking FinShare Container policies..."
 	@docker run -it --rm --mount type=bind,src=${PWD},dst=/root projectatomic/dockerfile-lint \
-		dockerfile_lint -r policies/all_rules.yml
+		dockerfile_lint -r policies/all_policy_rules.yml
 	@echo "Linting completed!"
 
 build-site:
@@ -44,29 +44,19 @@ inspect-labels:
 	@docker inspect -f '{{index .Config.Labels "maintainer"}}' hugo_server
 	@echo "Labels inspected!"
 
-clair: clair-start-server clair-scanner clair-stop-server
-
-clair-start-server:
-	@echo "Starting Clair server..."
-	@docker run --rm -d --name clair-db arminc/clair-db:latest
-	@sleep 5
-	@docker run --rm -p 6060:6060 --link clair-db:postgres -d --name clair arminc/clair-local-scan:v2.0.6
-
-clair-scanner:
-	@echo "Starting Clair scanner..."
-	@curl -OL https://github.com/arminc/clair-scanner/releases/download/v12/clair-scanner_darwin_amd64
-	@mv clair-scanner_darwin_amd64 clair-scanner
-	@chmod +x clair-scanner
-	@./clair-scanner -w clair_config/config.yaml --ip 192.168.100.5 vadimturkov/hugo-builder
-	@rm clair-scanner
-
-clair-stop-server:
-	@echo "Stopping Clair server..."
-	@docker stop clair-db
-	@docker stop clair
+clair-scan:
+	@echo "Scanning the Hugo Builder Container Image..."
+	@docker network create clair-scanning > /dev/null
+	@docker run -d --name clair-db -p 5432:5432 --net=clair-scanning arminc/clair-db:latest > /dev/null
+	@docker run -d --name clair -p 6060:6060  --net=clair-scanning --link clair-db:postgres arminc/clair-local-scan:latest > /dev/null
+	@docker run --name=scanner --net=clair-scanning --link=clair:clair -v '/var/run/docker.sock:/var/run/docker.sock' \
+		objectiflibre/clair-scanner --clair="http://clair:6060" --ip="scanner" vadimturkov/hugo-builder
+	@docker container rm -f clair clair-db scanner > /dev/null
+	@docker network rm clair-scanning > /dev/null
+	@echo "Scan of the Hugo Builder Container completed!"
 
 .PHONY: 
-	build hadolint dockerfile-lint 
+	build lint check-policies
 	build-site start-server stop-server 
 	health-check inspect-labels 
-	clair clair-start-server clair-scanner clair-stop-server
+	clair-scan

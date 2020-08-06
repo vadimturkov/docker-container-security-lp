@@ -1,7 +1,7 @@
 ---
-profile: 
-  name: "Extra Rules"
-  description: "Set of extra rules for Dockerfiles"
+profile:
+  name: "Container Policy Rules"
+  description: "FinShare Container Policy Rules"
 
 line_rules:
 
