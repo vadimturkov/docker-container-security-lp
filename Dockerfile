@@ -1,14 +1,25 @@
 FROM alpine:3.12
 
+ARG CREATE_DATE
+ARG REVISION
+ARG BUILD_VERSION
+
+ENV VERSION 0.64.0
+
 LABEL maintainer="vadim.turkov@gmail.com"
+LABEL org.opencontainers.image.create_date=$CREATE_DATE
+LABEL org.opencontainers.image.title="hugo_builder"
+LABEL org.opencontainers.image.source="https://github.com/vadimturkov/docker-container-security-lp"
+LABEL org.opencontainers.image.revision=$REVISION
+LABEL org.opencontainers.image.version=$BUILD_VERSION
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL hugo_version=$VERSION
 
 RUN apk add --no-cache \
   curl \
   git \
   openssh-client \
   rsync
-
-ENV VERSION 0.64.0
 
 WORKDIR /usr/local/src
 
