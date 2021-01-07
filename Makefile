@@ -1,3 +1,5 @@
+USER = finshare
+
 default: build 
 
 build:
@@ -84,6 +86,20 @@ bom:
     ternd -q report -f spdxtagvalue -i vadimturkov/hugo-builder:latest > bom.spdx
 	@echo "Bill of Materials created!"
 
+dct-key-generate:
+	@docker trust key generate $(USER) --dir ~/.docker/trust
+	@docker trust signer add --key ~/.docker/trust/$(USER).pub $(USER) vadimturkov/hugo-builer
+
+dct-key-info:
+	@echo "local DCT key info..."
+	@notary -d ~/.docker/trust key list
+
+sign:
+	@echo "Signing the container..."
+	@docker trust sign vadimturkov/hugo-builder:1.0.0
+	@docker trust inspect --pretty vadimturkov/hugo-builder:1.0.0
+	@echo "Signed the container!"
+
 clean:
 	@rm -rf tmp/
 	@docker image prune -f > /dev/null
@@ -101,4 +117,7 @@ clean:
 	inspect-labels 
 	clair-scan
 	bom
+	dct-key-generate
+	dct-key-info
+	sign
 	clean
